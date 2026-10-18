@@ -1,0 +1,125 @@
+name: Release (wiederverwendbar)
+
+on:
+  workflow_call:
+    inputs:
+      branches:
+        description: "JSON-Liste der Release-Branches"
+        type: string
+        default: '["main"]'
+      build-script:
+        description: "Skript im Repo, das Artefakte nach dist/ baut; bekommt die neue Version als Argument"
+        type: string
+        default: ""
+      assets:
+        description: "JSON-Liste der Glob-Muster, die ans GitHub-Release angehängt werden"
+        type: string
+        default: "[]"
+      image:
+        description: "Name des Container-Images unter ghcr.io/<owner>/, leer = kein Image"
+        type: string
+        default: ""
+      node-version:
+        type: string
+        default: "24"
+    outputs:
+      released:
+        description: "true, wenn ein neues Release entstanden ist"
+        value: ${{ jobs.release.outputs.released }}
+      version:
+        description: "Neue Version ohne v, leer ohne Release"
+        value: ${{ jobs.release.outputs.version }}
+
+permissions:
+  contents: write
+  issues: write
+  pull-requests: write
+  packages: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    outputs:
+      released: ${{ steps.version.outputs.released }}
+      version: ${{ steps.version.outputs.version }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ inputs.node-version }}
+
+      - name: semantic-release konfigurieren
+        env:
+          BRANCHES: ${{ inputs.branches }}
+          BUILD_SCRIPT: ${{ inputs.build-script }}
+          ASSETS: ${{ inputs.assets }}
+        run: |
+          cat > "$RUNNER_TEMP/configure.cjs" <<'NODE'
+          const fs = require("fs");
+          const preset = { preset: "conventionalcommits" };
+          const plugins = [
+            ["@semantic-release/commit-analyzer", preset],
+            ["@semantic-release/release-notes-generator", preset],
+            ["@semantic-release/changelog", { changelogFile: "CHANGELOG.md" }],
+          ];
+          if (process.env.BUILD_SCRIPT) {
+            plugins.push(["@semantic-release/exec", { prepareCmd: "bash " + process.env.BUILD_SCRIPT + " ${nextRelease.version}" }]);
+          }
+          plugins.push([
+            "@semantic-release/git",
+            { assets: ["CHANGELOG.md"], message: "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}" },
+          ]);
+          const assets = JSON.parse(process.env.ASSETS || "[]");
+          plugins.push(["@semantic-release/github", assets.length ? { assets } : {}]);
+          const config = { branches: JSON.parse(process.env.BRANCHES), tagFormat: "v${version}", plugins };
+          fs.writeFileSync(".releaserc.json", JSON.stringify(config, null, 2));
+          NODE
+          node "$RUNNER_TEMP/configure.cjs"
+
+      - name: semantic-release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: >-
+          npx --yes
+          -p semantic-release
+          -p @semantic-release/changelog
+          -p @semantic-release/git
+          -p @semantic-release/exec
+          -p conventional-changelog-conventionalcommits@8
+          semantic-release
+
+      - name: Release-Tag ermitteln
+        id: version
+        run: |
+          tag=$(git tag --points-at HEAD | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n1 || true)
+          if [ -n "$tag" ]; then
+            echo "released=true" >> "$GITHUB_OUTPUT"
+            echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
+            echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          else
+            echo "released=false" >> "$GITHUB_OUTPUT"
+            echo "version=" >> "$GITHUB_OUTPUT"
+            echo "tag=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Image bauen und veröffentlichen
+        if: steps.version.outputs.released == 'true' && inputs.image != ''
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ steps.version.outputs.tag }}
+          IMAGE: ${{ inputs.image }}
+        run: |
+          ref="ghcr.io/${GITHUB_REPOSITORY_OWNER}/${IMAGE}"
+          echo "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
+          docker build \
+            --label "org.opencontainers.image.source=https://github.com/${GITHUB_REPOSITORY}" \
+            --label "org.opencontainers.image.version=${TAG}" \
+            --label "org.opencontainers.image.revision=$(git rev-parse HEAD)" \
+            -t "${ref}:${TAG}" .
+          docker push "${ref}:${TAG}"
