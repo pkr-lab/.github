@@ -1,3 +1,9 @@
+## [1.0.1](https://github.com/pkr-lab/.github/compare/v1.0.0...v1.0.1) (2026-10-18)
+
+### Bug Fixes
+
+* **ci:** Ausgaben des Release-Workflows gebündelt schreiben ([023b1f6](https://github.com/pkr-lab/.github/commit/023b1f660ce3c7cfa2abf7598d72f322606c631a))
+
 ## 1.0.0 (2026-10-18)
 
 ### Features
