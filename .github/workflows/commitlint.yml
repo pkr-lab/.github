@@ -1,0 +1,53 @@
+name: Commitlint (wiederverwendbar)
+
+on:
+  workflow_call:
+    inputs:
+      node-version:
+        type: string
+        default: "24"
+
+permissions:
+  contents: read
+
+jobs:
+  commitlint:
+    name: commitlint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ inputs.node-version }}
+
+      - name: Regeln schreiben
+        run: |
+          cat > "$RUNNER_TEMP/commitlint.config.cjs" <<'NODE'
+          module.exports = {
+            rules: {
+              "type-enum": [2, "always", ["feat", "fix", "docs", "chore", "refactor", "test", "ci", "build", "perf", "style", "revert"]],
+              "type-empty": [2, "never"],
+              "type-case": [2, "always", "lower-case"],
+              "scope-case": [2, "always", "lower-case"],
+              "subject-empty": [2, "never"],
+              "subject-full-stop": [2, "never", "."],
+              "header-max-length": [2, "always", 120],
+            },
+          };
+          NODE
+
+      - name: Commits des Pull Requests prüfen
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: >-
+          npx --yes -p @commitlint/cli
+          commitlint
+          --config "$RUNNER_TEMP/commitlint.config.cjs"
+          --from "$BASE_SHA" --to "$HEAD_SHA" --verbose

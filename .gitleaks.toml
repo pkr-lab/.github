@@ -1,0 +1,4 @@
+title = ".github"
+
+[extend]
+useDefault = true

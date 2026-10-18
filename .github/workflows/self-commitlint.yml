@@ -1,0 +1,12 @@
+name: Commitlint
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  commitlint:
+    uses: ./.github/workflows/commitlint.yml
