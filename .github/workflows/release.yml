@@ -99,13 +99,17 @@ jobs:
         run: |
           tag=$(git tag --points-at HEAD | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n1 || true)
           if [ -n "$tag" ]; then
-            echo "released=true" >> "$GITHUB_OUTPUT"
-            echo "version=${tag#v}" >> "$GITHUB_OUTPUT"
-            echo "tag=$tag" >> "$GITHUB_OUTPUT"
+            {
+              echo "released=true"
+              echo "version=${tag#v}"
+              echo "tag=$tag"
+            } >> "$GITHUB_OUTPUT"
           else
-            echo "released=false" >> "$GITHUB_OUTPUT"
-            echo "version=" >> "$GITHUB_OUTPUT"
-            echo "tag=" >> "$GITHUB_OUTPUT"
+            {
+              echo "released=false"
+              echo "version="
+              echo "tag="
+            } >> "$GITHUB_OUTPUT"
           fi
 
       - name: Image bauen und veröffentlichen
