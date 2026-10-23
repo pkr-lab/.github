@@ -1,3 +1,9 @@
+## [1.2.0](https://github.com/pkr-lab/.github/compare/v1.1.0...v1.2.0) (2026-10-23)
+
+### Features
+
+* **ci:** Changelog-Commit im Release-Workflow abschaltbar ([0ba3d25](https://github.com/pkr-lab/.github/commit/0ba3d25f74c82791c2a930c597d1ded3b6d78240))
+
 ## [1.1.0](https://github.com/pkr-lab/.github/compare/v1.0.1...v1.1.0) (2026-10-23)
 
 ### Features
