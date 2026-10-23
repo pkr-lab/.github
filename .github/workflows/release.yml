@@ -19,6 +19,10 @@ on:
         description: "Name des Container-Images unter ghcr.io/<owner>/, leer = kein Image"
         type: string
         default: ""
+      changelog:
+        description: "CHANGELOG.md pflegen und als Release-Commit auf den Branch pushen; false bei Branches, die nur per Pull Request änderbar sind"
+        type: boolean
+        default: true
       node-version:
         type: string
         default: "24"
@@ -59,6 +63,7 @@ jobs:
           BRANCHES: ${{ inputs.branches }}
           BUILD_SCRIPT: ${{ inputs.build-script }}
           ASSETS: ${{ inputs.assets }}
+          CHANGELOG: ${{ inputs.changelog }}
         run: |
           cat > "$RUNNER_TEMP/configure.cjs" <<'NODE'
           const fs = require("fs");
@@ -76,15 +81,19 @@ jobs:
                 ...patchTypes.map((type) => ({ type, section: type === "docs" ? "Documentation" : "Chores" })),
               ] },
             }],
-            ["@semantic-release/changelog", { changelogFile: "CHANGELOG.md" }],
           ];
+          if (process.env.CHANGELOG === "true") {
+            plugins.push(["@semantic-release/changelog", { changelogFile: "CHANGELOG.md" }]);
+          }
           if (process.env.BUILD_SCRIPT) {
             plugins.push(["@semantic-release/exec", { prepareCmd: "bash " + process.env.BUILD_SCRIPT + " ${nextRelease.version}" }]);
           }
-          plugins.push([
-            "@semantic-release/git",
-            { assets: ["CHANGELOG.md"], message: "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}" },
-          ]);
+          if (process.env.CHANGELOG === "true") {
+            plugins.push([
+              "@semantic-release/git",
+              { assets: ["CHANGELOG.md"], message: "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}" },
+            ]);
+          }
           const assets = JSON.parse(process.env.ASSETS || "[]");
           plugins.push(["@semantic-release/github", assets.length ? { assets } : {}]);
           const config = { branches: JSON.parse(process.env.BRANCHES), tagFormat: "v${version}", plugins };
