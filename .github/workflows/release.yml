@@ -63,9 +63,19 @@ jobs:
           cat > "$RUNNER_TEMP/configure.cjs" <<'NODE'
           const fs = require("fs");
           const preset = { preset: "conventionalcommits" };
+          const patchTypes = ["docs", "chore"];
           const plugins = [
-            ["@semantic-release/commit-analyzer", preset],
-            ["@semantic-release/release-notes-generator", preset],
+            ["@semantic-release/commit-analyzer", { ...preset, releaseRules: patchTypes.map((type) => ({ type, release: "patch" })) }],
+            ["@semantic-release/release-notes-generator", {
+              ...preset,
+              presetConfig: { types: [
+                { type: "feat", section: "Features" },
+                { type: "fix", section: "Bug Fixes" },
+                { type: "perf", section: "Performance Improvements" },
+                { type: "revert", section: "Reverts" },
+                ...patchTypes.map((type) => ({ type, section: type === "docs" ? "Documentation" : "Chores" })),
+              ] },
+            }],
             ["@semantic-release/changelog", { changelogFile: "CHANGELOG.md" }],
           ];
           if (process.env.BUILD_SCRIPT) {
