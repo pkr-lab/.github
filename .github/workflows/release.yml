@@ -24,6 +24,7 @@ on:
         type: boolean
         default: true
       node-version:
+        description: "Node.js-Version für npx"
         type: string
         default: "24"
     outputs:

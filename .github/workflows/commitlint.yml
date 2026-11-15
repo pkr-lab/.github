@@ -4,6 +4,7 @@ on:
   workflow_call:
     inputs:
       node-version:
+        description: "Node.js-Version für npx"
         type: string
         default: "24"
 
