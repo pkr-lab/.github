@@ -51,6 +51,12 @@ jobs:
           check "chore(release): 1.0.0 [skip ci]" ok
           check "Update README" fail
           check "feat ohne Doppelpunkt" fail
+          check "feat: Ende mit Punkt." fail
+          check "feat(App): Großer Scope" fail
+          check "feat: $(printf 'x%.0s' {1..115})" fail
+          check "feat: $(printf 'x%.0s' {1..114})" ok
+          check "Merge branch 'main' into feat/x" ok
+          check "fixup! feat: Nachtrag." ok
 
   secret-scan:
     name: gitleaks
