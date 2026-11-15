@@ -66,6 +66,14 @@ jobs:
           ASSETS: ${{ inputs.assets }}
           CHANGELOG: ${{ inputs.changelog }}
         run: |
+          for file in .releaserc .releaserc.json .releaserc.yaml .releaserc.yml .releaserc.js .releaserc.cjs .releaserc.mjs release.config.js release.config.cjs release.config.mjs; do
+            if [ -e "$file" ]; then
+              echo "::warning file=$file::Das Repo hat eine eigene Release-Konfiguration; der zentrale Workflow ersetzt sie durch .releaserc.json."
+            fi
+          done
+          if [ -f package.json ] && node -e 'process.exit(require("./package.json").release ? 0 : 1)'; then
+            echo "::warning file=package.json::package.json enthält einen release-Abschnitt; der zentrale Workflow ersetzt ihn durch .releaserc.json."
+          fi
           cat > "$RUNNER_TEMP/configure.cjs" <<'NODE'
           const fs = require("fs");
           const preset = { preset: "conventionalcommits" };
@@ -145,6 +153,7 @@ jobs:
           TAG: ${{ steps.version.outputs.tag }}
           IMAGE: ${{ inputs.image }}
         run: |
+          rm -f .releaserc.json
           ref="ghcr.io/${GITHUB_REPOSITORY_OWNER}/${IMAGE}"
           echo "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
           docker build \
