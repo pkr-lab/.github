@@ -24,6 +24,7 @@ on:
         type: boolean
         default: true
       node-version:
+        description: "Node.js-Version für npx"
         type: string
         default: "24"
     outputs:
@@ -65,10 +66,20 @@ jobs:
           ASSETS: ${{ inputs.assets }}
           CHANGELOG: ${{ inputs.changelog }}
         run: |
+          for file in .releaserc .releaserc.json .releaserc.yaml .releaserc.yml .releaserc.js .releaserc.cjs .releaserc.mjs release.config.js release.config.cjs release.config.mjs; do
+            if [ -e "$file" ]; then
+              echo "::warning file=$file::Das Repo hat eine eigene Release-Konfiguration; der zentrale Workflow ersetzt sie durch .releaserc.json."
+            fi
+          done
+          if [ -f package.json ] && node -e 'process.exit(require("./package.json").release ? 0 : 1)'; then
+            echo "::warning file=package.json::package.json enthält einen release-Abschnitt; der zentrale Workflow ersetzt ihn durch .releaserc.json."
+          fi
           cat > "$RUNNER_TEMP/configure.cjs" <<'NODE'
           const fs = require("fs");
           const preset = { preset: "conventionalcommits" };
-          const patchTypes = ["docs", "chore"];
+          const changelogFile = "CHANGELOG.md";
+          const patchSections = { docs: "Documentation", chore: "Chores" };
+          const patchTypes = Object.keys(patchSections);
           const plugins = [
             ["@semantic-release/commit-analyzer", { ...preset, releaseRules: patchTypes.map((type) => ({ type, release: "patch" })) }],
             ["@semantic-release/release-notes-generator", {
@@ -78,20 +89,21 @@ jobs:
                 { type: "fix", section: "Bug Fixes" },
                 { type: "perf", section: "Performance Improvements" },
                 { type: "revert", section: "Reverts" },
-                ...patchTypes.map((type) => ({ type, section: type === "docs" ? "Documentation" : "Chores" })),
+                ...patchTypes.map((type) => ({ type, section: patchSections[type] })),
               ] },
             }],
           ];
           if (process.env.CHANGELOG === "true") {
-            plugins.push(["@semantic-release/changelog", { changelogFile: "CHANGELOG.md" }]);
+            plugins.push(["@semantic-release/changelog", { changelogFile }]);
           }
           if (process.env.BUILD_SCRIPT) {
-            plugins.push(["@semantic-release/exec", { prepareCmd: "bash " + process.env.BUILD_SCRIPT + " ${nextRelease.version}" }]);
+            const script = "'" + process.env.BUILD_SCRIPT.replace(/'/g, "'\\''") + "'";
+            plugins.push(["@semantic-release/exec", { prepareCmd: "bash " + script + " ${nextRelease.version}" }]);
           }
           if (process.env.CHANGELOG === "true") {
             plugins.push([
               "@semantic-release/git",
-              { assets: ["CHANGELOG.md"], message: "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}" },
+              { assets: [changelogFile], message: "chore(release): ${nextRelease.version} [skip ci]\n\n${nextRelease.notes}" },
             ]);
           }
           const assets = JSON.parse(process.env.ASSETS || "[]");
@@ -101,22 +113,25 @@ jobs:
           NODE
           node "$RUNNER_TEMP/configure.cjs"
 
+      - name: Vorhandene Tags merken
+        run: git tag -l > "$RUNNER_TEMP/tags-before"
+
       - name: semantic-release
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: >-
           npx --yes
-          -p semantic-release
-          -p @semantic-release/changelog
-          -p @semantic-release/git
-          -p @semantic-release/exec
-          -p conventional-changelog-conventionalcommits@8
+          -p semantic-release@25.0.9
+          -p @semantic-release/changelog@7.0.0
+          -p @semantic-release/git@11.0.1
+          -p @semantic-release/exec@7.1.0
+          -p conventional-changelog-conventionalcommits@8.0.0
           semantic-release
 
       - name: Release-Tag ermitteln
         id: version
         run: |
-          tag=$(git tag --points-at HEAD | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n1 || true)
+          tag=$(git tag --points-at HEAD | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | grep -vxF -f "$RUNNER_TEMP/tags-before" | sort -V | tail -n1 || true)
           if [ -n "$tag" ]; then
             {
               echo "released=true"
@@ -138,6 +153,7 @@ jobs:
           TAG: ${{ steps.version.outputs.tag }}
           IMAGE: ${{ inputs.image }}
         run: |
+          rm -f .releaserc.json
           ref="ghcr.io/${GITHUB_REPOSITORY_OWNER}/${IMAGE}"
           echo "$GITHUB_TOKEN" | docker login ghcr.io -u "$GITHUB_ACTOR" --password-stdin
           docker build \

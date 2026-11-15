@@ -19,9 +19,13 @@ permissions:
   pull-requests: write
   packages: write
 
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   release:
-    uses: pkr-lab/.github/.github/workflows/release.yml@<commit-sha> # v1.0.0
+    uses: pkr-lab/.github/.github/workflows/release.yml@<commit-sha> # <version>
 ```
 
 Commit-Prüfung (`.github/workflows/commitlint.yml`):
@@ -38,10 +42,10 @@ permissions:
 
 jobs:
   commitlint:
-    uses: pkr-lab/.github/.github/workflows/commitlint.yml@<commit-sha> # v1.0.0
+    uses: pkr-lab/.github/.github/workflows/commitlint.yml@<commit-sha> # <version>
 ```
 
-Lokaler Hook: `git config core.hooksPath .githooks` mit einer Kopie von `hooks/commit-msg` unter `.githooks/`.
+Lokaler Hook: `hooks/commit-msg` nach `.githooks/commit-msg` kopieren, ausführbar halten (`chmod +x .githooks/commit-msg`) und mit `git config core.hooksPath .githooks` einschalten.
 
 ## Dokumentation
 

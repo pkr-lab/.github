@@ -4,6 +4,7 @@ on:
   workflow_call:
     inputs:
       node-version:
+        description: "Node.js-Version für npx"
         type: string
         default: "24"
 
@@ -13,6 +14,7 @@ permissions:
 jobs:
   commitlint:
     name: commitlint
+    if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -30,6 +32,12 @@ jobs:
         run: |
           cat > "$RUNNER_TEMP/commitlint.config.cjs" <<'NODE'
           module.exports = {
+            parserPreset: {
+              parserOpts: {
+                headerPattern: /^(\w*)(?:\((.*)\))?!?: (.*)$/,
+                headerCorrespondence: ["type", "scope", "subject"],
+              },
+            },
             rules: {
               "type-enum": [2, "always", ["feat", "fix", "docs", "chore", "refactor", "test", "ci", "build", "perf", "style", "revert"]],
               "type-empty": [2, "never"],
@@ -47,7 +55,7 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
         run: >-
-          npx --yes -p @commitlint/cli
+          npx --yes -p @commitlint/cli@21.2.4
           commitlint
           --config "$RUNNER_TEMP/commitlint.config.cjs"
           --from "$BASE_SHA" --to "$HEAD_SHA" --verbose

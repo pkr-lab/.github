@@ -25,7 +25,8 @@ jobs:
 
       - name: actionlint
         run: |
-          bash <(curl -fsSL https://raw.githubusercontent.com/rhysd/actionlint/v1.7.12/scripts/download-actionlint.bash) 1.7.12
+          curl -fsSL -o "$RUNNER_TEMP/download-actionlint.bash" https://raw.githubusercontent.com/rhysd/actionlint/914e7df21a07ef503a81201c76d2b11c789d3fca/scripts/download-actionlint.bash
+          bash "$RUNNER_TEMP/download-actionlint.bash" 1.7.12
           ./actionlint -color
 
   hook:
@@ -41,13 +42,57 @@ jobs:
           check() {
             printf '%s\n' "$1" > "$RUNNER_TEMP/msg"
             if hooks/commit-msg "$RUNNER_TEMP/msg" 2>/dev/null; then got=ok; else got=fail; fi
-            test "$got" = "$2"
+            if [ "$got" != "$2" ]; then
+              echo "::error::'$1': erwartet $2, erhalten $got"
+              return 1
+            fi
           }
           check "feat(app): Neu" ok
           check "fix!: Bruch" ok
           check "chore(release): 1.0.0 [skip ci]" ok
           check "Update README" fail
           check "feat ohne Doppelpunkt" fail
+          check "feat: Ende mit Punkt." fail
+          check "feat(App): Großer Scope" fail
+          check "feat: $(printf 'x%.0s' {1..115})" fail
+          check "feat: $(printf 'x%.0s' {1..114})" ok
+          check "Merge branch 'main' into feat/x" ok
+          check "fixup! feat: Nachtrag." ok
+
+  commitlint-rules:
+    name: commitlint-Regeln
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+
+      - name: Hook und commitlint bewerten gleich
+        run: |
+          sed -n "/<<'NODE'/,/^ *NODE$/p" .github/workflows/commitlint.yml | sed '1d;$d;s/^          //' > "$RUNNER_TEMP/commitlint.config.cjs"
+          check() {
+            printf '%s\n' "$1" > "$RUNNER_TEMP/msg"
+            if hooks/commit-msg "$RUNNER_TEMP/msg" 2>/dev/null; then hook=ok; else hook=fail; fi
+            if npx --yes -p @commitlint/cli@21.2.4 commitlint --config "$RUNNER_TEMP/commitlint.config.cjs" < "$RUNNER_TEMP/msg" >/dev/null 2>&1; then lint=ok; else lint=fail; fi
+            if [ "$hook" != "$2" ] || [ "$lint" != "$2" ]; then
+              echo "::error::'$1': erwartet $2, Hook $hook, commitlint $lint"
+              return 1
+            fi
+          }
+          check "feat(app): Neu" ok
+          check "fix!: Bruch" ok
+          check "feat(app)!: Bruch mit Scope" ok
+          check "chore(release): 1.0.0 [skip ci]" ok
+          check "Update README" fail
+          check "feat: Ende mit Punkt." fail
+          check "feat(App): Großer Scope" fail
+          check "unbekannt: Typ" fail
+          check "feat: $(printf 'x%.0s' {1..115})" fail
 
   secret-scan:
     name: gitleaks
