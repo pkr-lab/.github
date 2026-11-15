@@ -89,7 +89,8 @@ jobs:
             plugins.push(["@semantic-release/changelog", { changelogFile }]);
           }
           if (process.env.BUILD_SCRIPT) {
-            plugins.push(["@semantic-release/exec", { prepareCmd: "bash " + process.env.BUILD_SCRIPT + " ${nextRelease.version}" }]);
+            const script = "'" + process.env.BUILD_SCRIPT.replace(/'/g, "'\\''") + "'";
+            plugins.push(["@semantic-release/exec", { prepareCmd: "bash " + script + " ${nextRelease.version}" }]);
           }
           if (process.env.CHANGELOG === "true") {
             plugins.push([
