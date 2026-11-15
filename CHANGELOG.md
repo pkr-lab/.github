@@ -1,3 +1,19 @@
+## [1.2.1](https://github.com/pkr-lab/.github/compare/v1.2.0...v1.2.1) (2026-11-15)
+
+### Bug Fixes
+
+* **commitlint:** Breaking-Change-Markierung ! in der Kopfzeile erkennen ([4c69a0e](https://github.com/pkr-lab/.github/commit/4c69a0eb705598321f151094909b818b3e42a057))
+* **commitlint:** Prüfung nur bei Pull Requests ausführen ([2096e33](https://github.com/pkr-lab/.github/commit/2096e33c532d2fd9be0ddb05f6d601a6dec6df6f))
+* **hook:** Punkt am Ende und Kopfzeilen über 120 Zeichen ablehnen ([b3b428e](https://github.com/pkr-lab/.github/commit/b3b428e8d363aa88dab3f1e5fb2035a3fccc6ec5))
+* **release:** build-script in prepareCmd quoten ([fd814a4](https://github.com/pkr-lab/.github/commit/fd814a4484123528d7078a28439c6af0ed6d1d89))
+* **release:** eigene Release-Konfiguration melden und nicht ins Image bauen ([2ecbf40](https://github.com/pkr-lab/.github/commit/2ecbf400dbc2a5947e9852bc0d9b73b0c0b9915d))
+* **release:** released nur bei einem in diesem Lauf erzeugten Tag melden ([e600cfc](https://github.com/pkr-lab/.github/commit/e600cfceeae488ea03abceb6a79d63fa9fc314ab))
+
+### Documentation
+
+* **license:** Rechteinhaber auf pkr-lab contributors korrigieren ([ed3237b](https://github.com/pkr-lab/.github/commit/ed3237befbe734d1d11214fe0b1b90e12e03010e))
+* **readme:** Beispiele ohne veraltete Version, mit concurrency und chmod ([96914e1](https://github.com/pkr-lab/.github/commit/96914e15c1e72d242f22faed45df5210ac42d49c))
+
 ## [1.2.0](https://github.com/pkr-lab/.github/compare/v1.1.0...v1.2.0) (2026-10-23)
 
 ### Features
