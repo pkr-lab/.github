@@ -41,7 +41,10 @@ jobs:
           check() {
             printf '%s\n' "$1" > "$RUNNER_TEMP/msg"
             if hooks/commit-msg "$RUNNER_TEMP/msg" 2>/dev/null; then got=ok; else got=fail; fi
-            test "$got" = "$2"
+            if [ "$got" != "$2" ]; then
+              echo "::error::'$1': erwartet $2, erhalten $got"
+              return 1
+            fi
           }
           check "feat(app): Neu" ok
           check "fix!: Bruch" ok
